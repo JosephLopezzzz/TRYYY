@@ -1,0 +1,395 @@
+// Prisma schema for HMSCORE2 (MySQL)
+// Run: pnpm db:init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum LoyaltyTier {
+  BRONZE
+  SILVER
+  GOLD
+  PLATINUM
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  name          String
+  passwordHash  String
+  roleId        String
+  role          Role           @relation(fields: [roleId], references: [id])
+  phone         String?        @db.VarChar(30)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  // NextAuth relations
+  accounts      Account[]
+  sessions      Session[]
+  // Domain
+  loyaltyMember LoyaltyMember?
+  reservations  Reservation[]
+}
+
+model Role {
+  id          String       @id @default(cuid())
+  name        String       @unique
+  description String?
+  permissions Permission[] @relation("RolePermissions")
+  users       User[]
+}
+
+model Permission {
+  id          String  @id @default(cuid())
+  name        String  @unique
+  description String?
+  roles       Role[]  @relation("RolePermissions")
+}
+
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String? @db.Text
+  access_token       String? @db.Text
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String? @db.Text
+  session_state      String?
+  oauth_token_secret String?
+  oauth_token        String?
+  user               User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Guest {
+  id              String           @id @default(cuid())
+  firstName       String
+  lastName        String
+  email           String?
+  phone           String?
+  preferences     Json?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  reservations    Reservation[]
+  folios          Folio[]
+  contacts        CRMContact[]
+  serviceRequests ServiceRequest[]
+}
+
+model RoomType {
+  id          String  @id @default(cuid())
+  name        String  @unique
+  description String?
+  capacity    Int
+  baseRate    Decimal @db.Decimal(10, 2)
+  rooms       Room[]
+  rates       Rate[]
+}
+
+model Room {
+  id                String             @id @default(cuid())
+  number            String             @unique
+  floor             Int
+  status            RoomStatus         @default(AVAILABLE)
+  roomTypeId        String
+  roomType          RoomType           @relation(fields: [roomTypeId], references: [id])
+  reservations      Reservation[]
+  housekeepingTasks HousekeepingTask[]
+  maintenanceTasks  MaintenanceTask[]
+  serviceRequests   ServiceRequest[]
+}
+
+enum RoomStatus {
+  AVAILABLE
+  OCCUPIED
+  DIRTY
+  OUT_OF_ORDER
+}
+
+model Reservation {
+  id        String            @id @default(cuid())
+  code      String            @unique
+  guestId   String
+  guest     Guest             @relation(fields: [guestId], references: [id])
+  userId    String? // created by
+  user      User?             @relation(fields: [userId], references: [id])
+  roomId    String?
+  room      Room?             @relation(fields: [roomId], references: [id])
+  checkIn   DateTime
+  checkOut  DateTime
+  status    ReservationStatus @default(BOOKED)
+  adults    Int               @default(1)
+  children  Int               @default(0)
+  rate      Decimal           @db.Decimal(10, 2)
+  notes     String?
+  // Phase 1 fields for Front Desk operations
+  idScanUrl         String?
+  digitalKeyIssued  Boolean           @default(false)
+  checkInVerified   Boolean           @default(false)
+  walkIn            Boolean           @default(false)
+  folio     Folio?
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+}
+
+enum ReservationStatus {
+  BOOKED
+  CHECKED_IN
+  CHECKED_OUT
+  CANCELED
+  NO_SHOW
+}
+
+model Folio {
+  id            String       @id @default(cuid())
+  guestId       String
+  guest         Guest        @relation(fields: [guestId], references: [id])
+  reservationId String?      @unique
+  reservation   Reservation? @relation(fields: [reservationId], references: [id])
+  items         FolioItem[]
+  payments      Payment[]
+  balance       Decimal      @default(0.00) @db.Decimal(12, 2)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  invoice       Invoice?
+}
+
+model FolioItem {
+  id        String   @id @default(cuid())
+  folioId   String
+  folio     Folio    @relation(fields: [folioId], references: [id])
+  type      String
+  amount    Decimal  @db.Decimal(12, 2)
+  note      String?
+  createdAt DateTime @default(now())
+}
+
+model Payment {
+  id        String   @id @default(cuid())
+  folioId   String
+  folio     Folio    @relation(fields: [folioId], references: [id])
+  method    String
+  amount    Decimal  @db.Decimal(12, 2)
+  currency  String   @default("USD")
+  ref       String?
+  status    String   @default("captured")
+  createdAt DateTime @default(now())
+}
+
+model Invoice {
+  id       String   @id @default(cuid())
+  folioId  String   @unique
+  folio    Folio    @relation(fields: [folioId], references: [id])
+  number   String   @unique
+  issuedAt DateTime @default(now())
+  pdfUrl   String?
+}
+
+model InventoryItem {
+  id         String    @id @default(cuid())
+  name       String
+  sku        String    @unique
+  quantity   Int       @default(0)
+  location   String?
+  threshold  Int       @default(10)
+  unit       String    @default("unit")
+  supplierId String?
+  supplier   Supplier? @relation(fields: [supplierId], references: [id])
+}
+
+model Supplier {
+  id             String          @id @default(cuid())
+  name           String
+  email          String?
+  phone          String?
+  items          InventoryItem[]
+  purchaseOrders PurchaseOrder[]
+}
+
+model PurchaseOrder {
+  id         String   @id @default(cuid())
+  supplierId String
+  supplier   Supplier @relation(fields: [supplierId], references: [id])
+  status     String   @default("draft")
+  total      Decimal  @db.Decimal(12, 2)
+  createdAt  DateTime @default(now())
+}
+
+model Event {
+  id        String          @id @default(cuid())
+  title     String
+  organizer String
+  contact   String?
+  start     DateTime
+  end       DateTime
+  venue     String
+  notes     String?
+  resources EventResource[]
+}
+
+model EventResource {
+  id       String @id @default(cuid())
+  eventId  String
+  event    Event  @relation(fields: [eventId], references: [id])
+  name     String
+  quantity Int
+}
+
+model LoyaltyMember {
+  id           String               @id @default(cuid())
+  userId       String               @unique
+  user         User                 @relation(fields: [userId], references: [id])
+  points       Int                  @default(0)
+  tier         String               @default("bronze")
+  transactions LoyaltyTransaction[]
+}
+
+model LoyaltyTransaction {
+  id        String        @id @default(cuid())
+  memberId  String
+  member    LoyaltyMember @relation(fields: [memberId], references: [id])
+  points    Int
+  type      String // earn|redeem
+  note      String?
+  createdAt DateTime      @default(now())
+}
+
+model CRMContact {
+  id           String        @id @default(cuid())
+  name         String
+  email        String?
+  phone        String?
+  tags         String?
+  guestId      String?
+  guest        Guest?        @relation(fields: [guestId], references: [id])
+  interactions Interaction[]
+}
+
+model Interaction {
+  id        String     @id @default(cuid())
+  contactId String
+  contact   CRMContact @relation(fields: [contactId], references: [id])
+  channel   String // email, call, sms
+  message   String
+  sentiment String?
+  createdAt DateTime   @default(now())
+}
+
+model MaintenanceTask {
+  id        String    @id @default(cuid())
+  roomId    String?
+  room      Room?     @relation(fields: [roomId], references: [id])
+  title     String
+  status    String    @default("open")
+  scheduled DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model HousekeepingTask {
+  id        String   @id @default(cuid())
+  roomId    String
+  room      Room     @relation(fields: [roomId], references: [id])
+  status    String   @default("pending")
+  type      String   @default("cleaning")
+  createdAt DateTime @default(now())
+}
+
+model ServiceRequest {
+  id        String   @id @default(cuid())
+  roomId    String?
+  room      Room?    @relation(fields: [roomId], references: [id])
+  guestId   String?
+  guest     Guest?   @relation(fields: [guestId], references: [id])
+  type      String
+  details   String?
+  status    String   @default("open")
+  createdAt DateTime @default(now())
+}
+
+model Channel {
+  id     String  @id @default(cuid())
+  name   String  @unique
+  apiKey String?
+  active Boolean @default(true)
+}
+
+model RatePlan {
+  id    String  @id @default(cuid())
+  name  String  @unique
+  desc  String?
+  rates Rate[]
+}
+
+model Rate {
+  id         String   @id @default(cuid())
+  roomTypeId String
+  roomType   RoomType @relation(fields: [roomTypeId], references: [id])
+  ratePlanId String
+  ratePlan   RatePlan @relation(fields: [ratePlanId], references: [id])
+  date       DateTime
+  price      Decimal  @db.Decimal(10, 2)
+  minStay    Int      @default(1)
+
+  @@unique([roomTypeId, ratePlanId, date])
+}
+
+model MarketingCampaign {
+  id       String   @id @default(cuid())
+  name     String
+  channel  String
+  startsAt DateTime
+  endsAt   DateTime
+  budget   Decimal  @db.Decimal(12, 2)
+  roi      Decimal? @db.Decimal(12, 2)
+}
+
+model Promotion {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  desc      String?
+  discount  Decimal  @db.Decimal(5, 2)
+  validFrom DateTime
+  validTo   DateTime
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  action    String
+  entity    String?
+  note      String?
+  createdAt DateTime @default(now())
+}
+
+model QueueTicket {
+  id        String   @id @default(cuid())
+  guestName String
+  purpose   String   @default("checkin")
+  status    String   @default("waiting") // waiting | serving | done
+  createdAt DateTime @default(now())
+}

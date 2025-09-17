@@ -1,0 +1,10 @@
+enum PaymentStatus {
+  PENDING = 'PENDING',
+  COMPLETED = 'COMPLETED',
+  FAILED = 'FAILED',
+  REFUNDED = 'REFUNDED',
+  PARTIALLY_REFUNDED = 'PARTIALLY_REFUNDED',
+  CANCELLED = 'CANCELLED'
+}
+
+export default PaymentStatus;

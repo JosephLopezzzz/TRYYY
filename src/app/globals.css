@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-primary: 37 99 235; /* blue-600 */
+}
+
+.dark {
+  --color-primary: 147 51 234; /* purple-600 */
+}
+
+body { @apply bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100; }
+
+.btn { @apply inline-flex items-center px-4 py-2 rounded-md bg-primary text-white hover:opacity-90 disabled:opacity-50; }
+.card { @apply rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 shadow-sm p-4; }
+.input { @apply px-3 py-2 border rounded-md w-full bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-700; }
+.label { @apply text-sm text-gray-600 dark:text-gray-300 mb-1; }
+
+/* Custom grid for room layout */
+.grid-cols-15 {
+  grid-template-columns: repeat(15, minmax(0, 1fr));
+}

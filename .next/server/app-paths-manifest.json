@@ -1,0 +1,15 @@
+{
+  "/api/auth/[...nextauth]/route": "app/api/auth/[...nextauth]/route.js",
+  "/login/page": "app/login/page.js",
+  "/api/private/staff/route": "app/api/private/staff/route.js",
+  "/page": "app/page.js",
+  "/api/private/reservations/route": "app/api/private/reservations/route.js",
+  "/api/private/queue/route": "app/api/private/queue/route.js",
+  "/api/private/rooms/route": "app/api/private/rooms/route.js",
+  "/dashboard/staff/page": "app/dashboard/staff/page.js",
+  "/dashboard/crm/page": "app/dashboard/crm/page.js",
+  "/dashboard/rooms/page": "app/dashboard/rooms/page.js",
+  "/dashboard/analytics/page": "app/dashboard/analytics/page.js",
+  "/dashboard/page": "app/dashboard/page.js",
+  "/dashboard/frontdesk/page": "app/dashboard/frontdesk/page.js"
+}

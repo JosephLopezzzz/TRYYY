@@ -1,0 +1,20 @@
+{
+  "theme": {
+    "mode": "light",
+    "primary": "37 99 235"
+  },
+  "modules": {
+    "frontDesk": true,
+    "reservations": true,
+    "loyalty": true,
+    "billing": true,
+    "inventory": true,
+    "events": true,
+    "crm": true,
+    "rooms": true,
+    "housekeeping": true,
+    "marketing": true,
+    "channels": true,
+    "analytics": true
+  }
+}
